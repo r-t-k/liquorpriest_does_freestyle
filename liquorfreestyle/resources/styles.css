@@ -1,0 +1,84 @@
+body {
+    background-color: black;
+    color: lime;
+    font-family: 'Comic Sans MS', 'Comic Sans', cursive;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    text-align: center;
+}
+
+#appContainer {
+    border: 3px solid gold;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0px 0px 20px 5px red;
+    width: 80%;
+    max-width: 600px;
+}
+
+h1 {
+    font-family: 'Impact', 'Charcoal', sans-serif;
+    font-size: 2.5em;
+    text-shadow: 2px 2px 0px red, 4px 4px 0px gold;
+    margin-bottom: 20px;
+}
+
+button {
+    background-color: gold;
+    color: black;
+    border: 2px solid red;
+    padding: 10px 20px;
+    font-size: 1.2em;
+    font-family: 'Impact', 'Charcoal', sans-serif;
+    cursor: pointer;
+    margin: 10px;
+    transition: all 0.3s;
+    border-radius: 5px;
+}
+
+button:hover {
+    background-color: red;
+    color: white;
+    border: 2px solid gold;
+    box-shadow: 0px 0px 10px 2px white;
+}
+
+#verificationMessage {
+    margin-top: 15px;
+    font-size: 1.2em;
+    text-shadow: 1px 1px 0px black;
+}
+
+.verification-list {
+    font-size: 8px;
+    list-style-type: none;
+    padding: 0;
+    text-align: left;
+    background-color: darkgray;
+}
+
+.verification-list li {
+    margin-bottom: 10px;
+    background-color: #33086b80;
+    padding: 5px;
+    border-radius: 5px;
+}
+
+.logo {
+    width: 150px;
+    margin-bottom: 20px;
+}
+
+.cool-gif {
+    width: 100px;
+    height: auto;
+    margin: 10px;
+}
+
+#buttonsContainer {
+    margin-top: 20px;
+}
