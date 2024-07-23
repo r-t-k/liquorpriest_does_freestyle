@@ -82,3 +82,9 @@ button:hover {
 #buttonsContainer {
     margin-top: 20px;
 }
+
+p.instructions {
+    font-size: 10px;
+    font-style: italic;
+    color:blueviolet;
+}

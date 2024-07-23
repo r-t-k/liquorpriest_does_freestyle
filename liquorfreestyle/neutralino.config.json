@@ -45,7 +45,7 @@
     "window": {
       "title": "liquorfreestyle",
       "width": 875,
-      "height": 875,
+      "height": 1050,
       "minWidth": 400,
       "minHeight": 200,
       "center": true,
@@ -57,7 +57,7 @@
       "maximize": false,
       "hidden": false,
       "resizable": true,
-      "exitProcessOnClose": true
+      "exitProcessOnClose": false
     },
     "browser": {
       "globalVariables": {

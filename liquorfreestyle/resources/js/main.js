@@ -92,7 +92,6 @@ let aliasDeployedExePath = '';
 let setupDone = false;
 let internalConfig = '';
 
-
 async function isElevated() {
     try {
         const output = await Neutralino.os.execCommand('net session');
@@ -108,24 +107,28 @@ async function isElevated() {
 // Restart the application with elevated permissions
 async function restartElevated() {
     try {
-        const output = await Neutralino.os.execCommand('powershell -Command "Start-Process neutralino-win -Verb runAs"');
-        console.log('Application restarted with elevated permissions.');
+        await Neutralino.os.execCommand('powershell -Command "Start-Process neutralino-win -Verb runAs"');
+        showMessage('Application restarted with elevated permissions.');
         Neutralino.app.exit();
     } catch (error) {
+        showMessage('Failed to restart with elevated permissions.');
         console.error('Failed to restart with elevated permissions:', error);
     }
 }
 
-
+// Show message on UI
+function showMessage(message, isError = false) {
+    const messageContainer = document.getElementById('feedbackMessage');
+    messageContainer.innerHTML = `<p style="color: ${isError ? 'red' : 'lime'};">${message}</p>`;
+}
 
 // Function to open a directory dialog and save the path to huntGameDirPath
 async function selectDirectory() {
     try {
-
         // Ensure the application has elevated permissions
         const elevated = await isElevated();
         if (!elevated) {
-            console.log('Requesting elevated permissions...');
+            showMessage('Requesting elevated permissions...');
             await restartElevated();
             return; // Exit current function as the application will restart
         }
@@ -135,7 +138,7 @@ async function selectDirectory() {
 
         if (response) {
             huntGameDirPath = response;
-            console.log('Selected game directory path:', huntGameDirPath);
+            showMessage(`Selected game directory path: ${huntGameDirPath}`);
 
             // Set derived paths
             setDerivedPaths();
@@ -147,6 +150,7 @@ async function selectDirectory() {
             updateUIAfterVerification();
         }
     } catch (error) {
+        showMessage('Error selecting directory.', true);
         console.error('Error selecting directory:', error);
     }
 }
@@ -170,43 +174,38 @@ function setDerivedPaths() {
 
 async function verifyPaths() {
     try {
-        console.log('Verifying paths...');
+        showMessage('Verifying paths...');
         await checkDirectoryExists(huntBinWin64DirPath, 'huntBinWin64DirPath');
-        console.log('Finished checking huntBinWin64DirPath.');
-
         await checkFileExists(huntGameExeFilePath, 'huntGameExeFilePath');
-        console.log('Finished checking huntGameExeFilePath.');
-
         await checkDirectoryExists(internalDirPath, 'internalDirPath', true);
         await checkDirectoryExists(internalDataDirPath, 'internalDataDirPath', true);
         await checkDirectoryExists(internalBackupDirPath, 'internalBackupDirPath', true);
         await checkDirectoryExists(cleanHuntGameExeDirPath, 'cleanHuntGameExeDirPath', true);
-        console.log('Finished checking internal directories.');
-
         await checkDirectoryExists(easyAntiCheatPath, 'easyAntiCheatPath');
-        console.log('Finished checking easyAntiCheatPath.');
-
         await checkFileExists(EACSettingsFilePath, 'EACSettingsFilePath');
-        console.log('Finished checking EACSettingsFilePath.');
+        showMessage('Finished verifying paths.');
     } catch (error) {
+        showMessage('Error verifying paths.', true);
         console.error('Error verifying paths:', error);
     }
 }
 
 async function checkDirectoryExists(path, pathName, createIfNotExists = false) {
     try {
-        console.log(`Checking directory: ${path}`);
-        let stats = await Neutralino.filesystem.readDirectory(path);
-        console.log(`Directory ${pathName} exists: ${path}`);
+        showMessage(`Checking directory: ${path}`);
+        await Neutralino.filesystem.readDirectory(path);
+        showMessage(`Directory ${pathName} exists: ${path}`);
     } catch (error) {
         if (createIfNotExists) {
             try {
                 await Neutralino.filesystem.createDirectory(path);
-                console.log(`Directory ${pathName} created: ${path}`);
+                showMessage(`Directory ${pathName} created: ${path}`);
             } catch (creationError) {
+                showMessage(`Error creating directory ${pathName}: ${path}`, true);
                 console.error(`Error creating directory ${pathName}: ${path}`, creationError);
             }
         } else {
+            showMessage(`Directory ${pathName} does not exist: ${path}`, true);
             console.error(`Directory ${pathName} does not exist: ${path}`, error);
         }
     }
@@ -215,16 +214,17 @@ async function checkDirectoryExists(path, pathName, createIfNotExists = false) {
 // Adjusted checkFileExists to return a boolean value
 async function checkFileExists(path, pathName) {
     try {
-        console.log(`Checking file: ${path}`);
+        showMessage(`Checking file: ${path}`);
         let stats = await Neutralino.filesystem.getStats(path);
         if (stats) {
-            console.log(`File ${pathName} exists: ${path}`);
+            showMessage(`File ${pathName} exists: ${path}`);
             return true;
         } else {
-            console.error(`File ${pathName} does not exist: ${path}`);
+            showMessage(`File ${pathName} does not exist: ${path}`, true);
             return false;
         }
     } catch (error) {
+        showMessage(`File ${pathName} does not exist: ${path}`, true);
         console.error(`File ${pathName} does not exist: ${path}`, error);
         return false;
     }
@@ -247,54 +247,56 @@ function updateUIAfterVerification() {
     `;
 
     buttonsContainer.innerHTML = `
+    <div id="btnRow1">
+    <p class="instructions">Use on first install or after game update</p>
         <button id="createBackup">Create Backup</button>
         <button id="runSetup">Run Setup</button>
+    </div>
+    <div id="btnRow2">
+    <p class="instructions">Only run once unless the Game is updated or you Fixed Client Error</p>
         <button id="activateLiquorFreestyle">Activate Liquor Freestyle</button>
+    </div>
+    <div id="btnRow3">
+    <p class="instructions">Running these will require you to also run the activation again to use filters</p>
+        <button id="deployCleanHunt">Fix Client Error</button>
         <button id="resetToVanilla">Reset Back to Vanilla</button>
+    </div>
     `;
 
+    document.getElementById('createBackup').addEventListener('click', async () => {
+        showMessage('Running backup...');
+        await createBackup();
+    });
+
+    document.getElementById('runSetup').addEventListener('click', async () => {
+        showMessage('Running setup...');
+        aliasExeName = 'eurotrucks2.exe';
+        await runSetup();
+    });
+
     document.getElementById('activateLiquorFreestyle').addEventListener('click', async () => {
-       // document.getElementById('modeButtons').style.display = 'block';
-       console.log('Get You Bricked Up Mode activated');
-       modeSelection = 'brickedUp';
-       aliasExeName = 'eurotrucks2.exe';
-       await activateLiquorFreestyle();
-    });
-
-    document.getElementById('normalMode').addEventListener('click', async () => {
-        console.log('Normal Mode activated');
-        modeSelection = 'normal';
-        aliasExeName = 'anselintegrationtestapp.exe';
-        await activateLiquorFreestyle();
-    });
-
-    document.getElementById('brickedUpMode').addEventListener('click', async () => {
-        console.log('Get You Bricked Up Mode activated');
+        showMessage('Activating Liquor Freestyle...');
         modeSelection = 'brickedUp';
         aliasExeName = 'eurotrucks2.exe';
         await activateLiquorFreestyle();
     });
 
+    document.getElementById('deployCleanHunt').addEventListener('click', async () => {
+        showMessage('deploying Clean HuntGame.exe...');
+        await deployCleanHuntExe();
+    });
+
     document.getElementById('resetToVanilla').addEventListener('click', async () => {
-        console.log('Resetting back to Vanilla');
+        showMessage('Resetting back to Vanilla...');
         await resetToVanilla();
-    });
-    document.getElementById('runSetup').addEventListener('click', async () => {
-        aliasExeName = 'eurotrucks2.exe';
-        console.log('running setup');
-        await runSetup();
-    });
-    document.getElementById('createBackup').addEventListener('click', async () => {
-        console.log('running backup');
-        await createBackup();
     });
 }
 
 // setup function for first run and after game updates
 async function runSetup() {
     try {
-        console.log('Starting setup...');
-
+        showMessage('Starting setup...');
+        
         // vars
         let errors = '';
         aliasExePath = `${cleanHuntGameExeDirPath}/${aliasExeName}`;
@@ -316,46 +318,47 @@ async function runSetup() {
 
         if (doesOriginalExeExist) {
             if (doesCleanExeExist) {
-                await Neutralino.filesystem.remove(cleanHuntGameExeFilePath);
+                //await Neutralino.filesystem.remove(cleanHuntGameExeFilePath);
+                const delCleanHuntCommand = `del "${cleanHuntGameExeFilePath}"`;
+                const delCleanHuntCommandOutput = await Neutralino.os.execCommand(delCleanHuntCommand);
+                showMessage(`Command output: ${delCleanHuntCommandOutput.stdOut}`);
             }
-            // Move the original hunt exe. if it already exists (cleanHuntGameExeFilePath) then replace it
-            //await Neutralino.filesystem.move(huntGameExeFilePath, cleanHuntGameExeFilePath);
 
             // copy the original hunt with console command
-            // copy /B source_file_path destination_file_path
             const copyCommand = `copy /B "${huntGameExeFilePath}" "${cleanHuntGameExeFilePath}"`;
             const output = await Neutralino.os.execCommand(copyCommand, { cwd: huntBinWin64DirPath });
-            console.log(copyCommand);
-            console.log(`Command output: ${output.stdOut}`);
-            console.log('Cloned a clean copy of HuntGame.exe successfully.');
-            // update state
+            showMessage(`Command output: ${output.stdOut}`);
+            showMessage('Cloned a clean copy of HuntGame.exe successfully.');
             cleanExeSetupDone = true;
         } else {
-            // track errors with errors var
-            // if the original doesn't exist we need to log that
             errors = 'ERROR: original exe file does not exist in win_x64';
+            showMessage(errors, true);
         }
 
         if (cleanExeSetupDone) {
             if (doesAliasExeExist) {
-                await Neutralino.filesystem.remove(aliasExePath);
+                //await Neutralino.filesystem.remove(aliasExePath);
+                const delAliasCommand = `del "${aliasExePath}"`;
+                const delAliasCommandOutput = await Neutralino.os.execCommand(delAliasCommand);
+                showMessage(`Command output: ${delAliasCommandOutput.stdOut}`);
+
             }
             if (doesdeployedAliasExeExist) {
-                await Neutralino.filesystem.remove(aliasDeployedExePath);
+                //await Neutralino.filesystem.remove(aliasDeployedExePath);
+                const delDeployedAliasCommand = `del "${aliasDeployedExePath}"`;
+                const delDeployedAliasCommandOutput = await Neutralino.os.execCommand(delDeployedAliasCommand);
+                showMessage(`Command output: ${delDeployedAliasCommandOutput.stdOut}`);
             }
             cleanAliasSetupDone = true;
         }
 
-
         if (cleanExeSetupDone && cleanAliasSetupDone) {
-
-            await deployCleanHuntExe();
+           // await deployCleanHuntExe();
         }
-
-
-
-
+        
+        showMessage('Setup completed successfully!');
     } catch (error) {
+        showMessage('Error during setup.', true);
         console.error('Error during setup:', error);
     }
 }
@@ -363,22 +366,18 @@ async function runSetup() {
 // Activation logic for Liquor Freestyle
 async function activateLiquorFreestyle() {
     try {
-
-        // deploy alias
         await deployAlias();
-
-        // Edit Settings.json
         await editEACSettingsFile();
-
-        console.log('Liquor Freestyle activated successfully!');
+        showMessage('Liquor Freestyle activated successfully!');
+        //Neutralino.app.exit(); // Exit the application after successful activation
     } catch (error) {
+        showMessage('Error activating Liquor Freestyle.', true);
         console.error('Error activating Liquor Freestyle:', error);
     }
 }
 
 async function createBackup() {
     try {
-
         let checkIfHuntExeExists = await checkFileExists(huntGameExeFilePath, 'huntGameExeFilePath', true);
 
         if (checkIfHuntExeExists) {
@@ -386,23 +385,20 @@ async function createBackup() {
             const backupDir = `${internalBackupDirPath}/${timestamp}`;
             await Neutralino.filesystem.createDirectory(backupDir);
 
-           // await copyFile(EACSettingsFilePath, `${backupDir}/Settings.json`);
-            //await copyFile(huntGameExeFilePath, `${backupDir}/HuntGame.exe`);
             const backupHuntCommand = `copy /B /V "${huntGameExeFilePath}" "${backupDir}/HuntGame.exe"`;
             const backupHuntOutput = await Neutralino.os.execCommand(backupHuntCommand, { cwd: huntBinWin64DirPath });
-            console.log(`Command output: ${backupHuntOutput.stdOut}`);
-            //
+            showMessage(`Command output: ${backupHuntOutput.stdOut}`);
+
             const backupEACCommand = `copy /V "${EACSettingsFilePath}" "${backupDir}/Settings.json"`;
             const backupEACOutput = await Neutralino.os.execCommand(backupEACCommand, { cwd: easyAntiCheatPath });
-            console.log(`Command output: ${backupEACOutput.stdOut}`);
+            showMessage(`Command output: ${backupEACOutput.stdOut}`);
 
-            console.log('Backup created successfully!');
+            showMessage('Backup created successfully!');
         } else {
-            console.error('HuntGame.exe Does Not Exist in /bin/win_x64')
+            showMessage('HuntGame.exe does not exist in /bin/win_x64', true);
         }
-
-
     } catch (error) {
+        showMessage('Error creating backup.', true);
         console.error('Error creating backup:', error);
     }
 }
@@ -414,8 +410,9 @@ async function editEACSettingsFile() {
         settings.executable = `bin\\win_x64\\${aliasExeName}`;
 
         await Neutralino.filesystem.writeFile(EACSettingsFilePath, JSON.stringify(settings, null, 4));
-        console.log('EAC Settings file edited successfully!');
+        showMessage('EAC Settings file edited successfully!');
     } catch (error) {
+        showMessage('Error editing EAC Settings file.', true);
         console.error('Error editing EAC Settings file:', error);
     }
 }
@@ -423,32 +420,24 @@ async function editEACSettingsFile() {
 async function deployCleanHuntExe() {
     const copyHuntCommand = `copy /B /V "${cleanHuntGameExeFilePath}" "${huntGameExeFilePath}"`;
     const copyHuntOutput = await Neutralino.os.execCommand(copyHuntCommand, { cwd: cleanHuntGameExeDirPath });
-    console.log(copyHuntCommand);
-    console.log(`Command output: ${copyHuntOutput.stdOut}`);
+    showMessage(`Command output: ${copyHuntOutput.stdOut}`);
 }
 
 async function deployAlias() {
-    // if aliasExe exists move it to the aliasDeployedExePath
-    //let aliasCheck = await checkFileExists(aliasExePath, 'aliasExePath', true);
-    // if(aliasCheck){
-    //    await Neutralino.filesystem.move(aliasExePath, aliasDeployedExePath);
-    // }
-    //await Neutralino.filesystem.copy(cleanHuntGameExeFilePath, huntGameExeFilePath);
     const aliasCommand = await Neutralino.os.execCommand(`mklink /H "${aliasExeName}" "HuntGame.exe"`, { cwd: huntBinWin64DirPath });
-    console.log(`Command output: ${aliasCommand.stdOut}`);
+    showMessage(`Command output: ${aliasCommand.stdOut}`);
 }
 
 async function resetToVanilla() {
     try {
-        // Restore original executable in EAC Settings.json
         let settingsContent = await Neutralino.filesystem.readFile(EACSettingsFilePath);
         let settings = JSON.parse(settingsContent);
         settings.executable = 'bin\\win_x64\\HuntGame.exe';
 
         await Neutralino.filesystem.writeFile(EACSettingsFilePath, JSON.stringify(settings, null, 4));
-
-        console.log('Reset to vanilla successfully!');
+        showMessage('Reset to vanilla successfully!');
     } catch (error) {
+        showMessage('Error resetting to vanilla.', true);
         console.error('Error resetting to vanilla:', error);
     }
 }
@@ -456,10 +445,10 @@ async function resetToVanilla() {
 // Copy file function
 async function copyFile(source, destination) {
     try {
-
         await Neutralino.filesystem.copy(source, destination);
-        console.log(`File copied from ${source} to ${destination}`);
+        showMessage(`File copied from ${source} to ${destination}`);
     } catch (error) {
+        showMessage(`Error copying file from ${source} to ${destination}`, true);
         console.error(`Error copying file from ${source} to ${destination}`, error);
     }
 }
@@ -479,6 +468,7 @@ function useGameDirPath() {
 
 // Example usage: Call the useGameDirPath function
 useGameDirPath();
+
 
 
 
